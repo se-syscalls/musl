@@ -1,0 +1,65 @@
+#!/bin/sh
+if [ "$COMPILE_STD_LIBC" ] ; then
+	exec /usr/bin/ld $*
+fi
+
+cc="@CC@"
+libc_lib="@LIBDIR@"
+ldso="@LDSO@"
+cleared=
+shared=
+userlinkdir=
+userlink=
+ld=/usr/bin/ld
+
+not_ignore_next=1
+for x ; do
+    test "$cleared" || set -- ; cleared=1
+
+    if test $not_ignore_next ; then
+        case "$x" in
+        -dynamic-linker)
+            not_ignore_next=
+            ;;
+        -L-user-start)
+            userlinkdir=1
+            ;;
+        -L-user-end)
+            userlinkdir=
+            ;;
+        -L*)
+            test "$userlinkdir" && set -- "$@" "$x"
+            ;;
+        -l-user-start)
+            userlink=1
+            ;;
+        -l-user-end)
+            userlink=
+            ;;
+        *crtbegin*.o|*crtend*.o)
+            set -- "$@" $($cc -print-file-name=$x)
+            ;;
+        -lgcc|-lgcc_eh|-lgcc_s)
+            #file=lib${x#-l}.a
+            #set -- "$@" $($cc -print-file-name=$file)
+            ;;
+        -l*)
+            set -- "$@" "$x"
+            ;;
+        -shared)
+            shared=1
+            set -- "$@" -shared
+            ;;
+        -sysroot=*|--sysroot=*)
+            ;;
+        *)
+            set -- "$@" "$x"
+            ;;
+        esac
+    else
+        not_ignore_next=1
+    fi
+done
+
+#echo "Calling: $ld -nostdlib $@ -lc -dynamic-linker $ldso"
+exec $ld -nostdlib "$@" -lc -dynamic-linker "$ldso"

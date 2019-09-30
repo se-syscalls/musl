@@ -1,0 +1,32 @@
+#!/bin/sh
+cc="@CC@"
+libc="@PREFIX@"
+libc_inc="@INCDIR@"
+libc_lib="@LIBDIR@"
+libc_bin="@BINDIR@"
+
+# prevent clang from running the linker (and erroring) on no input.
+sflags=
+eflags=
+for x ; do
+    case "$x" in
+        -l*) input=1 ;;
+        *) input= ;;
+    esac
+    if test "$input" ; then
+        sflags="-l-user-start"
+        eflags="-l-user-end"
+        break
+    fi
+done
+
+exec $cc \
+    -B"$libc_bin" \
+    --sysroot "$libc" \
+    -L$libc_lib \
+    -L-user-start \
+    $sflags \
+    "$@" \
+    $eflags \
+    -L"$libc_lib" \
+    -L-user-end
